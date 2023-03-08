@@ -1,0 +1,169 @@
+package pl.edu.pw.ee.services;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+import pl.edu.pw.ee.Node;
+import pl.edu.pw.ee.StorageNode;
+
+public class Utils {
+
+    public static File[] ValidateInput(String pathToRootDir) {
+
+        if (pathToRootDir == null) {
+            throw new IllegalArgumentException("Input string can't be null!!!");
+        }
+
+        File folder = new File(pathToRootDir);
+        File[] folderFiles = folder.listFiles();
+
+        if (folderFiles == null && !folder.isDirectory()) {
+            throw new IllegalArgumentException("Given file path must be a directory!!!");
+        } else if (folderFiles.length == 0) {
+            throw new IllegalArgumentException("Given dorectory is empty!!!");
+        }
+
+        for (File f : folderFiles) {
+            if (!f.canRead()) {
+                throw new IllegalArgumentException("Given file is unable to be read!!!");//sprawdz pisownie
+            } else if (f.length() == 0) {
+                throw new IllegalArgumentException("Given file is empty!!!");
+            }
+        }
+
+        return folderFiles;
+    }
+
+    public static char[] getCharsFromFile(File inputFile, boolean compress) throws FileNotFoundException {
+        String inputString = "";
+        Scanner scanner = new Scanner(inputFile);
+        scanner.useDelimiter("");
+
+        while (scanner.hasNext()) {
+            String nextChar = scanner.next();
+            if ((int) nextChar.charAt(0) <= 127 || compress) {//nie wiem czy dobrze trzeba sprawdzić
+                inputString += nextChar;
+            } else {
+                throw new IllegalArgumentException("File contains unsuported characters!!!");
+            }
+        }
+
+        return inputString.toCharArray();
+    }
+
+    public static void baseTreeToFile(String parent, List<Node> baseTree) {
+        File directory = new File(parent);
+        int fileCount = 0;
+        if (!directory.isDirectory()) {
+            throw new RuntimeException("Something is wrong with output file!!!");
+        }
+        File treeOutputFile = new File(parent + "\\tree.txt");
+        try {
+            while (treeOutputFile.exists()) {
+                fileCount++;
+            }
+            treeOutputFile = new File(parent + "\\tree" + fileCount + ".txt");
+            treeOutputFile.createNewFile();
+
+            FileWriter writer;
+
+            writer = new FileWriter(treeOutputFile);
+
+            for (Node n : baseTree) {
+                writer.write(String.format("%d %d\n", (int)n.getCharacter(), n.getFrequency()));
+            }
+
+            writer.close();
+        } catch (IOException ex) {
+            throw new RuntimeException("Cannot write to file");
+        }
+
+    }
+
+    public static void convertInputStringToFile(String parent, List<StorageNode> outputTree, char[] originalCharArr) {//fghnrgthjfghjfghjfghj
+        File directory = new File(parent);
+        int fileCount = 0;
+
+        if (!directory.isDirectory()) {
+            throw new RuntimeException("Something is wrong with output file!!!");
+        }
+        File byteCodeOutputFile;
+
+        try {
+            byteCodeOutputFile = new File(parent + "\\byte" + fileCount + ".txt");
+            byteCodeOutputFile.createNewFile();
+            FileWriter writer;
+            writer = new FileWriter(byteCodeOutputFile);
+            int i = 0;
+            String bitsToConvert = "";
+
+            for (char c : originalCharArr) {
+                for (StorageNode n : outputTree) {
+                    if (n.getCharacter() == c) {
+                        for (char ca : n.getByteCode().toCharArray()) {
+                            bitsToConvert += ca;
+                            if (i % 7 == 0 && i != 0) {
+                                int decimal = Integer.parseInt(bitsToConvert, 2);
+                                writer.write((char) decimal);
+                                System.out.print(bitsToConvert);
+                                bitsToConvert = "";
+                            }
+                            i++;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (i - 1 % 7 != 0) {
+                int howMuchToAdd = (i - 1) % 7 - 1;
+                for (StorageNode n : outputTree) {
+                    if (n.getCharacter() == originalCharArr[originalCharArr.length - 1]) {
+                        for (int j = 0; j < howMuchToAdd; j++) {
+                            bitsToConvert += n.getByteCode().charAt(n.getByteCode().length() - howMuchToAdd);
+                        }
+                    }
+                }
+                writer.write((char) Integer.parseInt(bitsToConvert, 2));
+            }
+            System.out.print(bitsToConvert);
+            writer.close();
+        } catch (IOException ex) {
+            throw new RuntimeException("Cannot write to file");
+        }
+    }
+
+    public static List<Node> getBaseTreeFromFile(File file) {
+        List<Node> list = new ArrayList<Node>();
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            char newCharacter;
+            String Line = "";
+            String[] rcS;
+
+            while ((Line = reader.readLine()) != null) {
+                rcS = Line.split("\\s+");
+                if (rcS[0] == "") {
+                    newCharacter = ' ';
+                } else {
+                    newCharacter = (char)Integer.parseInt(rcS[0]);
+                }
+                int newFrequency = Integer.parseInt(rcS[1]);
+                Node newNode = new Node(newFrequency, newCharacter, null, null);
+                list.add(newNode);
+            }
+        } catch (FileNotFoundException ex) {
+
+            throw new IllegalArgumentException("File was not found!!!");
+        } catch (IOException ex) {
+
+            throw new IllegalArgumentException("Something is wrong with file!!!");
+        }
+        return list;
+    }
+}
